@@ -31,7 +31,7 @@ async function run() {
   const authorization=req.headers.authorization;
   console.log("authorization",authorization);
   if(!authorization){
-return res.status(400).send({error:true,message:"unauthorized user"})
+return res.status(401).send({error:true,message:"unauthorized user"})
   };
   const token=req?.headers?.authorization.split(" ")[1];
   console.log("token",token);
@@ -39,7 +39,7 @@ return res.status(400).send({error:true,message:"unauthorized user"})
    
       if(err){
         
-          return res.status(401).send({error:true,message:"no valid user"})
+          return res.status(403).send({error:true,message:"no valid user"})
 
       }
      req.decoded=decoded;
@@ -65,7 +65,8 @@ app.post('/users',async(req,res)=>{
    })
    app.post('/jwt',async(req,res)=>{
 const data=req.body;
-var token = jwt.sign(data, process.env.GENERATE_KEY, { expiresIn: '4h' });
+var token = jwt.sign(data, process.env.GENERATE_KEY, { expiresIn: '10h' });
+console.log("mytoken",token);
 res.send({token});
 
    })
