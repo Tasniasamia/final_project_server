@@ -45,7 +45,20 @@ return res.status(401).send({error:true,message:"unauthorized user"})
      req.decoded=decoded;
       next();
     });
- }   
+ } 
+ const verifyAdmin=async(req,res,next)=>{
+  const decod=req.decoded;
+const email=decod.email;
+const query={email:email};
+const finddata=await user.findOne(query);
+
+  if(finddata?.role!=="Admin"){
+  return  res.status(403).send({error:true,message:"forbidden user"})
+   
+  }
+  next();
+
+ } 
 app.post('/users',async(req,res)=>{
   const data=req.body;
   const email=data.email;
@@ -83,15 +96,18 @@ res.send({token});
       const result = await movies2.deleteOne(query);
       res.send(result);
     });
-    app.get('/updateUsersall/:email',async(req,res)=>{
+    app.get('/updateUsersall/:email',verifyjwt,async(req,res)=>{
 const email=req.params.email;
 console.log(email);
 const query={email:email};
 const data=await user.findOne(query);
 console.log("getdata",data);
-const admin={Admin:data?.role==="Admin"};
-console.log(admin);
-res.send(admin);
+if(data?.role==="Admin"){
+  const admin={Admin:data?.role==="Admin"};
+  console.log(admin);
+  res.send(admin);
+}
+
 
     })
     app.patch('/updateUsers/:id',async(req,res)=>{
@@ -111,7 +127,7 @@ res.send(admin);
   const result=await user.updateOne(query,updateDoc);
   res.send(result);
     })
-    app.get('/usersdata',async(req,res)=>{
+    app.get('/usersdata',verifyjwt,verifyAdmin,async(req,res)=>{
       const data=await user.find().toArray();
       res.send(data);
     })
