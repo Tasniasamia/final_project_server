@@ -136,6 +136,17 @@ if(data?.role==="Admin"){
       const result=await movies.find().toArray();
       res.send(result);
   })
+  app.get('/menus',verifyjwt,verifyAdmin,async(req,res)=>{
+        
+    const result=await movies.find().toArray();
+    res.send(result);
+})
+app.delete('/deletemenuitem/:id',verifyjwt,verifyAdmin,async(req,res)=>{
+  const id=req.params.id;
+  const query={_id:new ObjectId(id)};
+  const result=await movies.deleteOne(query);
+  res.send(result);
+})
     app.get('/catscollection',verifyjwt,async(req,res)=>{
       const decod=req.decoded;
       console.log(decod);
@@ -148,6 +159,11 @@ if(data?.role==="Admin"){
           return res.status(403).send({error:true,message:"forbidden user"})
         }
       const result=await movies2.find(query).toArray();
+      res.send(result);
+    })
+    app.post('/addintomenu',verifyjwt,verifyAdmin,async(req,res)=>{
+      const data=req.body;
+      const result = await movies.insertOne(data);
       res.send(result);
     })
     
