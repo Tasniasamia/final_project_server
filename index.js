@@ -1,5 +1,6 @@
 const express = require('express')
 const app = express()
+const stripe = require("stripe")(process.env.MY_PAYMENT_SECRET_KEY);
 const port = process.env.port || 6769
 var cors = require('cors')
 require('dotenv').config()
@@ -95,6 +96,23 @@ res.send({token});
 
       const result = await movies2.deleteOne(query);
       res.send(result);
+    });
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount=price*100;
+    
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: [
+          "card"
+        ],
+      });
+    
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
     app.get('/updateUsersall/:email',verifyjwt,async(req,res)=>{
 const email=req.params.email;
