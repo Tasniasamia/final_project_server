@@ -1,12 +1,13 @@
 const express = require('express')
 const app = express()
-const stripe = require("stripe")(process.env.MY_PAYMENT_SECRET_KEY);
+const stripe = require("stripe")(`sk_test_51NEdRqLQLVWVnV1HZTftjIeUs0Q8a4RjIJHxQRAZ2wlBnVXvIMZI0IqBGsJHAh7nXrqB9N6MRDcxYMbE0M2j40OB00NGWWEYTq`);
 const port = process.env.port || 6769
 var cors = require('cors')
 require('dotenv').config()
 var jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-
+app.use(cors());
+app.use(express.json());
 const uri =`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ioy1chb.mongodb.net/?retryWrites=true&w=majority`;
 console.log(uri);
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -28,6 +29,8 @@ async function run() {
     const movies = database.collection("menu");
     const movies2=database.collection("addmenuitem");
     const user=database.collection("user");
+    const payment=database.collection("payment");
+
  const verifyjwt=(req,res,next)=>{
   const authorization=req.headers.authorization;
   console.log("authorization",authorization);
@@ -97,23 +100,39 @@ res.send({token});
       const result = await movies2.deleteOne(query);
       res.send(result);
     });
-    app.post("/create-payment-intent", async (req, res) => {
+
+
+
+    app.post("/create-payment-intent",verifyjwt ,async (req, res) => {
       const { price } = req.body;
-      const amount=price*100;
+      const amount= price * 100;
     
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
-        payment_method_types: [
-          "card"
-        ],
+        payment_method_types: ["card"],
       });
-    
+    console.log("PAYMENT",paymentIntent);
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
     });
+
+
+app.post('/Payment',async(req,res)=>{
+
+const data=req.body;
+const result=await payment.insertOne(data);
+
+const query={_id: { $in:  (data.items_id).map(index=>new ObjectId(index))}};
+const deleteresult=await movies2.deleteMany(query);
+res.send({result,deleteresult});
+
+})
+
+
+
     app.get('/updateUsersall/:email',verifyjwt,async(req,res)=>{
 const email=req.params.email;
 console.log(email);
@@ -145,6 +164,54 @@ if(data?.role==="Admin"){
   const result=await user.updateOne(query,updateDoc);
   res.send(result);
     })
+
+
+    app.get('/menuitems', async(req, res) => {
+
+      const pipeline = [
+        {
+          $lookup: {
+            from: 'menu',
+            localField: 'menuitem_id',
+            foreignField: '_id',
+            as: 'payment_docs'
+          }
+        },
+        {
+          $unwind: '$payment_docs'
+        },
+        {
+          $group: {
+            _id: '$payment_docs.category',
+            count: { $sum: 1 },
+            total: { $sum: '$payment_docs.price' }
+          }
+        },
+        {
+          $project: {
+            category: '$_id',
+            count: 1,
+            total: { $round: ['$total', 2] },
+            _id: 0
+          }
+        }
+      ];
+
+const result=await payment.aggregate(pipeline).toArray();
+res.send(result);
+
+
+
+    })
+
+
+
+
+
+
+
+
+
     app.get('/usersdata',verifyjwt,verifyAdmin,async(req,res)=>{
       const data=await user.find().toArray();
       res.send(data);
@@ -196,8 +263,8 @@ app.delete('/deletemenuitem/:id',verifyjwt,verifyAdmin,async(req,res)=>{
 run().catch(console.dir);
 
 
-app.use(cors());
-app.use(express.json());
+// app.use(cors());
+// app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
